@@ -1,6 +1,8 @@
 # incidence
 COVID-19 Inzidenz-Widget für iOS innerhalb Deutschlands 🇩🇪 (Kreis/Stadt + Bundesland + Deutschland + Trend)
 
+<img src=screenshot.png>
+
 Skript muss in der App Scriptable importiert werden und kann dann als Widget genutzt werden. 
 
 Das Widget kann parametriert werden. Durch Übergabe des ersten Parameters kann umgeschaltet werden zwischen Kurvenanzeige und Statistik-Anzeige:
