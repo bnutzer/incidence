@@ -5,7 +5,7 @@ COVID-19 Inzidenz-Widget für iOS innerhalb Deutschlands 🇩🇪 (Kreis/Stadt +
 
 Skript muss in der App Scriptable importiert werden und kann dann als Widget genutzt werden. 
 
-Das Widget kann parametriert werden. Durch Übergabe des ersten Parameters kann umgeschaltet werden zwischen Kurvenanzeige und Statistik-Anzeige:
+Das Widget kann parametriert werden. Durch Übergabe des ersten Parameters kann umgeschaltet werden zwischen Landkreis/Bundesland und Deutschland:
 
 Format der Parameterübergabe
 Gebiet, LAT, LON, Name
