@@ -9,10 +9,6 @@
 /*********************************************
  * CONFIGURATION PARAMETERS
  ********************************************/
-// set to true for showing all cases in county
-// set to false for hiding all cases in county
-const showAllCases = false
-
 // set to 'MeldeDatum' for the day when number of cases were reported
 // set to 'RefDatum' for the day of start of illness
 const datumType = 'MeldeDatum'
@@ -53,6 +49,9 @@ const distanceBottomLabel = 8
 // default is on (switch off by setting first parameter to '0')
 let graphOn = true
 
+let SMALL = false
+let MEDIUM = false
+
 /**
  * Fix Coordinates/MediumWidget 
  * Set First Widgetparameter for showing graph (1) or showing statistics (0)
@@ -73,15 +72,16 @@ const LIMIT_DARKRED = 100
 const LIMIT_RED = 50
 const LIMIT_ORANGE = 35
 const LIMIT_YELLOW = 25
-const LIMIT_DARKRED_COLOR = new Color('f6000f') // DARERED: 9e000a
+const LIMIT_DARKRED_COLOR = new Color('9e000a')
 const LIMIT_RED_COLOR = new Color('f6000f')
 const LIMIT_ORANGE_COLOR = new Color('#ff7927')
 const LIMIT_YELLOW_COLOR = new Color('F5D800')
 const LIMIT_GREEN_COLOR = new Color('1CC747')
 
-const GET_DAYS = 35;
+const GET_DAYS = 35; // 5 Wochen
 const WEEK_IN_DAYS = 7;
 const EWZ_GER = 83020000;
+const INCIDENCE_DAYS = 28 // 3 Wochen
 
 const shortGER = 'D'
 
@@ -105,6 +105,7 @@ const BUNDESLAENDER_SHORT = {
 };
 
 let fixedCoordinates = []
+let individualName = ''
 if (args.widgetParameter) {
     const parameters = args.widgetParameter.split(',');
 
@@ -115,8 +116,11 @@ if (args.widgetParameter) {
             graphOn = false
         }
     }
-    if (parameters.length == 3) {
+    if (parameters.length >= 3) {
         fixedCoordinates = parseLocation(args.widgetParameter)
+    }
+    if (parameters.length == 4) {
+        individualName = parameters[3].slice()
     }
 } else {}
 
@@ -129,7 +133,7 @@ function parseLocation(input) {
     _fixedCoordinates.forEach(coords => {
         _coords[0] = {
             latitude: parseFloat(coords[1]),
-            longitude: parseFloat(coords[2])
+            longitude: parseFloat(coords[2]),
         }
     })
 
@@ -146,6 +150,11 @@ Script.setWidget(widget)
 Script.complete()
 
 async function createWidget() {
+    if (config.widgetFamily = 'small') {
+        SMALL = true
+    } else if (config.widgetFamily = 'medium') {
+        MEDIUM = true
+    }
     const _data = await getData(0)
     let areaName;
     if (_data && typeof _data.areaName !== 'undefined') {
@@ -156,11 +165,8 @@ async function createWidget() {
     const headerLabel = list.addStack()
     headerLabel.useDefaultPadding()
     headerLabel.centerAlignContent()
-    list.setPadding(10, 20, 10, 10)
-    headerLabel.layoutVertically()
-
-    const header = headerLabel.addText("🦠 Inzidenz".toUpperCase())
-    header.font = Font.mediumSystemFont(13)
+    list.setPadding(10, 10, 10, 10)
+    headerLabel.layoutHorizontally()
 
     if (data && typeof data[areaName] !== 'undefined') {
         if (!data[areaName].shouldCache) {
@@ -171,20 +177,22 @@ async function createWidget() {
         } else {
             list.refreshAfterDate = new Date(Date.now() + 60 * 60 * 1000)
         }
-        list.addSpacer(5)
+        const header = headerLabel.addText("🦠 ")
+        header.font = Font.mediumSystemFont(12)
+
+        // AREA NAME 
+        const areanameLabel = headerLabel.addText(data[areaName].areaName)
+        areanameLabel.font = Font.mediumSystemFont(12)
+        areanameLabel.lineLimit = 1
 
         // INCIDENCE
-        const incidenceLabel = list.addStack()
-
-        incidenceLabel.layoutHorizontally()
-        incidenceLabel.useDefaultPadding()
-        incidenceLabel.topAlignContent()
-        createIncidenceLabelBlock(incidenceLabel, data[areaName])
+        createIncidenceLabelBlock(list, data[areaName])
     } else {
         list.addSpacer()
-        const errorLabel = list.addText("Daten nicht verfügbar. \nWidget öffnen für reload...")
+        const errorLabel = list.addText("Daten nicht verfügbar. \nReload erfolgt... Bitte warten.")
         errorLabel.font = Font.mediumSystemFont(12)
         errorLabel.textColor = Color.gray()
+        list.refreshAfterDate = new Date(Date.now() + 1 * 15 * 1000) // Reload in 15 Sekunden
     }
 
     return list
@@ -214,19 +222,35 @@ function getCasesByDates(jsonData, StartDate, EndDate) {
 function getIncidenceLastWeek(jsonData, EWZ) {
     let incidence = [];
     let factor = EWZ / 100000;
-    for (let i = 0; i < 7; i++) {
-        startDate = (showIncidenceYesterday) ? getFormatedDateBeforeDays(14 - i) : getFormatedDateBeforeDays(13 - i)
-        endDate = (showIncidenceYesterday) ? getFormatedDateBeforeDays(7 - i) : getFormatedDateBeforeDays(6 - i)
+    for (let i = 0; i < INCIDENCE_DAYS; i++) {
+        startDate = (showIncidenceYesterday) ? getFormatedDateBeforeDays(INCIDENCE_DAYS + 7 - i) : getFormatedDateBeforeDays(INCIDENCE_DAYS + 6 - i)
+        endDate = (showIncidenceYesterday) ? getFormatedDateBeforeDays(INCIDENCE_DAYS - i) : getFormatedDateBeforeDays(INCIDENCE_DAYS - 1 - i)
         incidence.push((getCasesByDates(jsonData, startDate, endDate) / factor).toFixed(1))
     }
     console.log(incidence)
     return incidence
 }
 
+function getAreaName(attr) {
+    if (individualName == '') {
+        return (attr.GEN)
+    } else {
+        return (individualName)
+    }
+}
+
+function getValueFromJson(data) {
+    if (data.features[0].attributes.value != null) {
+        return (parseInt(data.features[0].attributes.value))
+    } else {
+        return 0;
+    }
+}
+
 async function getData(useFixedCoordsIndex = false) {
     try {
         let dataCases = await new Request(apiUrlNewCases).loadJSON()
-        const cases = dataCases.features[0].attributes.value
+        const cases = getValueFromJson(dataCases)
 
         let dataStates = await new Request(apiUrlStates).loadJSON()
         const incidencePerState = dataStates.features.map((f) => {
@@ -246,7 +270,7 @@ async function getData(useFixedCoordsIndex = false) {
         let landkreisId = parseInt(attr.RS);
 
         let lkdata = await new Request(apiUrlNewCasesLK(landkreisId)).loadJSON()
-        const areaNewCases = parseInt(lkdata.features[0].attributes.value)
+        const areaNewCases = getValueFromJson(lkdata)
         lkdata = await new Request(apiUrlCasesLKDays(landkreisId, getFormatedDateBeforeDays(GET_DAYS))).loadJSON()
         const areaCasesLastWeek = getCasesByDates(lkdata, getFormatedDateBeforeDays(7), getFormatedDateBeforeDays(0))
         const areaCasesLastWeekYesterday = getCasesByDates(lkdata, getFormatedDateBeforeDays(8), getFormatedDateBeforeDays(1))
@@ -254,7 +278,7 @@ async function getData(useFixedCoordsIndex = false) {
         const areaIncidenceLastWeek = getIncidenceLastWeek(lkdata, parseInt(attr.EWZ))
 
         let bldata = await new Request(apiUrlNewCasesBL(bundeslandId)).loadJSON()
-        const blNewCases = parseInt(bldata.features[0].attributes.value)
+        const blNewCases = getValueFromJson(bldata)
         bldata = await new Request(apiUrlCasesBLDays(bundeslandId, getFormatedDateBeforeDays(GET_DAYS))).loadJSON()
         const blCasesLastWeek = getCasesByDates(bldata, getFormatedDateBeforeDays(7), getFormatedDateBeforeDays(0))
         const blCasesLastWeekYesterday = getCasesByDates(bldata, getFormatedDateBeforeDays(8), getFormatedDateBeforeDays(1))
@@ -272,7 +296,7 @@ async function getData(useFixedCoordsIndex = false) {
             bundeslandId: bundeslandId,
             incidence: parseFloat(attr.cases7_per_100k.toFixed(1)),
             incidenceBL: parseFloat(attr.cases7_bl_per_100k.toFixed(1)),
-            areaName: attr.GEN,
+            areaName: getAreaName(attr),
             areaCases: parseFloat(attr.cases.toFixed(1)),
             areaNewCases: areaNewCases,
             areaCasesLastWeek: areaCasesLastWeek,
@@ -319,10 +343,11 @@ async function getLocation(fixedCoordinateIndex = false) {
 function createAvgLabel(label, data) {
     let bgColor = new Color('f0f0f0')
     let textColor = new Color('444444')
-    if (Device.isUsingDarkAppearance()) {
-        bgColor = new Color('202020')
-        textColor = new Color('f0f0f0')
-    }
+
+    // if (Device.isUsingDarkAppearance()) {
+    //     bgColor = new Color('202020')
+    //     textColor = new Color('f0f0f0')
+    // }
 
     let fontsize = 9
     let formatedCasesArea = ''
@@ -366,10 +391,11 @@ function createAvgLabel(label, data) {
 function createGerDailyCasesLabel(label, data) {
     let bgColor = new Color('f0f0f0')
     let textColor = new Color('444444')
-    if (Device.isUsingDarkAppearance()) {
-        bgColor = new Color('202020')
-        textColor = new Color('f0f0f0')
-    }
+
+    // if (Device.isUsingDarkAppearance()) {
+    //     bgColor = new Color('202020')
+    //     textColor = new Color('f0f0f0')
+    // }
 
     let fontsize = 9
     let formatedCasesArea = ''
@@ -427,130 +453,119 @@ function getTrendArrow(preValue, currentValue) {
 
 function createUpdatedLabel(label, data) {
     const updateLabel = label.addText(`${data.updated.substr(0, 10)} `)
-    updateLabel.font = Font.systemFont(10)
+    updateLabel.font = Font.systemFont(8)
     updateLabel.textColor = Color.gray()
     updateLabel.leftAlignText()
 }
 
 function createIncidenceLabelBlock(labelBlock, data) {
+    let bgColor = new Color('f0f0f0')
+    let textColor = new Color('444444')
+    const mainRowWidth = 130
+    const mainRowHeight = 40
+    const fontSizeLocal = 27
+
     const stack = labelBlock.addStack()
     stack.layoutVertically()
     stack.useDefaultPadding()
     stack.topAlignContent()
 
-    let mainRowLength = (config.widgetFamily == 'medium') ? 270 : 135
-    let mainRowHeight = (config.widgetFamily == 'medium') ? 30 : 30
-    let fontSizeLocal = (config.widgetFamily == 'medium') ? 18 : 18
-
-
-    // DATE
-    const stackDate = stack.addStack()
-    stackDate.layoutHorizontally()
-    createUpdatedLabel(stackDate, data)
-
-    // display all cases in county
-    if (showAllCases) {
-        stackDate.addSpacer(1)
-        const areaGesCasesLabel = stackDate.addText(' (' + data.areaCases + ') ')
-        areaGesCasesLabel.rightAlignText()
-        areaGesCasesLabel.font = Font.mediumSystemFont(10)
-        areaGesCasesLabel.lineLimit = 1
-        areaGesCasesLabel.textColor = Color.gray()
-    }
-
-    stack.addSpacer(5)
+    stack.addSpacer(4)
 
     // MAIN ROW WITH INCIDENCE
     const stackMainRow = stack.addStack()
-    stackMainRow.useDefaultPadding()
+    stackMainRow.layoutHorizontally()
     stackMainRow.centerAlignContent()
-    stackMainRow.size = new Size(mainRowLength, mainRowHeight)
+    stackMainRow.size = new Size(mainRowWidth, mainRowHeight)
 
     // MAIN INCIDENCE
     let areaIncidence = (showIncidenceYesterday) ? data.areaIncidenceLastWeek[data.areaIncidenceLastWeek.length - 1] : data.incidence
-    let incidence = areaIncidence >= 100 ? Math.floor(areaIncidence) : areaIncidence;
-    const incidenceLabel = stackMainRow.addText('' + incidence)
+    let incidence = areaIncidence >= 100 ? Math.round(areaIncidence) : parseFloat(areaIncidence).toFixed(1);
+    const incidenceLabel = stackMainRow.addText(incidence.toString().replace('.', ','))
     incidenceLabel.font = Font.boldSystemFont(fontSizeLocal)
     incidenceLabel.leftAlignText();
-    incidenceLabel.textColor = getIncidenceColor(data.incidence)
+    incidenceLabel.textColor = getIncidenceColor(incidence)
 
     let length = data.areaIncidenceLastWeek.length
     const incidenceTrend = getTrendArrow(data.areaIncidenceLastWeek[length - WEEK_IN_DAYS], data.areaIncidenceLastWeek[length - (trendDaysOffset + 1)])
-    const incidenceLabelTrend = stackMainRow.addText(incidenceTrend)
-    incidenceLabelTrend.font = Font.boldSystemFont(fontSizeLocal)
-    incidenceLabelTrend.leftAlignText();
+    const incidenceLabelTrend = stackMainRow.addText('' + incidenceTrend)
+    incidenceLabelTrend.font = Font.mediumSystemFont(fontSizeLocal - 4)
+    incidenceLabelTrend.rightAlignText();
     incidenceLabelTrend.textColor = (incidenceTrend === '↑') ? LIMIT_RED_COLOR : LIMIT_GREEN_COLOR
 
-    stackMainRow.addSpacer(3)
+    stack.addSpacer(4)
+    const stackMainRight = stack.addStack()
+    stackMainRight.useDefaultPadding()
+        //stackMainRight.size = new Size(130, 15)
+    stackMainRight.layoutHorizontally()
 
     // BL INCIDENCE
-    const incidenceBLStack = stackMainRow.addStack();
-    incidenceBLStack.backgroundColor = new Color('f0f0f0')
-    incidenceBLStack.cornerRadius = 4
-    incidenceBLStack.setPadding(2, 3, 2, 3)
+    const stackTop = stackMainRight.addStack()
+    stackTop.backgroundColor = bgColor
+    stackTop.cornerRadius = 6
+    stackTop.setPadding(2, 3, 2, 3)
+    stackTop.size = new Size(63, 14)
+    stackTop.centerAlignContent()
 
     let blIncidence = (showIncidenceYesterday) ? data.blIncidenceLastWeek[data.blIncidenceLastWeek.length - 1] : data.incidenceBL
-    const incidenceBL = (blIncidence >= 100) ? Math.floor(blIncidence) : blIncidence
+    let incidenceBL = Math.round(blIncidence)
     length = data.blIncidenceLastWeek.length
-    const incidenceBLLabel = incidenceBLStack.addText(incidenceBL + getTrendArrow(data.blIncidenceLastWeek[length - WEEK_IN_DAYS], data.blIncidenceLastWeek[length - (trendDaysOffset + 1)]) + '\n' + data.nameBL)
-    incidenceBLLabel.font = Font.mediumSystemFont(9)
-    incidenceBLLabel.textColor = getIncidenceColor(data.incidenceBL)
-
-    stackMainRow.addSpacer(3)
+    const incidenceBLLabel = stackTop.addText(data.nameBL + ': ' + formatCases(incidenceBL) + getTrendArrow(data.blIncidenceLastWeek[length - WEEK_IN_DAYS], data.blIncidenceLastWeek[length - (trendDaysOffset + 1)]))
+    incidenceBLLabel.font = Font.mediumSystemFont(10)
+    incidenceBLLabel.textColor = textColor //getIncidenceColor(blIncidence)
+    incidenceBLLabel.lineLimit = 1
 
     // GER INCIDENCE
-    const incidenceDStack = stackMainRow.addStack();
-    incidenceDStack.backgroundColor = new Color('f0f0f0')
-    incidenceDStack.cornerRadius = 4
-    incidenceDStack.setPadding(2, 3, 2, 3)
+    stackMainRight.addSpacer(3)
+    const stackBottom = stackMainRight.addStack()
+    stackBottom.backgroundColor = bgColor
+    stackBottom.cornerRadius = 6
+    stackBottom.setPadding(2, 3, 2, 3)
+    stackBottom.size = new Size(63, 14)
+    stackBottom.centerAlignContent()
 
     let gerIncidence = data.gerIncidenceLastWeek[data.gerIncidenceLastWeek.length - 1]
-    const incidenceD = (gerIncidence >= 100) ? Math.floor(gerIncidence) : gerIncidence
+    let incidenceD = Math.round(gerIncidence)
     length = data.gerIncidenceLastWeek.length
-    const incidenceDLabel = incidenceDStack.addText(incidenceD + getTrendArrow(data.gerIncidenceLastWeek[length - WEEK_IN_DAYS], data.gerIncidenceLastWeek[length - (trendDaysOffset + 1)]) + '\n' + shortGER)
-    incidenceDLabel.font = Font.mediumSystemFont(9)
-    incidenceDLabel.textColor = getIncidenceColor(incidenceD)
+    const incidenceDLabel = stackBottom.addText(shortGER + ': ' + formatCases(incidenceD) + getTrendArrow(data.gerIncidenceLastWeek[length - WEEK_IN_DAYS], data.gerIncidenceLastWeek[length - (trendDaysOffset + 1)]))
+    incidenceDLabel.font = Font.mediumSystemFont(10)
+    incidenceDLabel.textColor = textColor //getIncidenceColor(gerIncidence)
+    incidenceDLabel.lineLimit = 1
 
-    stackMainRow.addSpacer()
-
-    const areanameLabel = stack.addText(data.areaName)
-    areanameLabel.font = Font.mediumSystemFont(12)
-    areanameLabel.lineLimit = 1
-
-    stack.addSpacer(5)
+    // GRAPH OR STATISTIC
+    stack.addSpacer(2)
     if (graphOn) {
+        stack.addSpacer(2)
         createGraph(stack, data)
     } else {
         createAvgLabel(stack, data)
         stack.addSpacer(2)
         createGerDailyCasesLabel(stack, data)
     }
+
+    stack.addSpacer(3)
+
+    // DATE
+    const stackDate = stack.addStack()
+    stackDate.layoutHorizontally()
+    createUpdatedLabel(stackDate, data)
 }
 
 function createGraph(row, data) {
     let graphHeight = 30
+    let graphWidth = 130
     let graphRow = row.addStack()
     graphRow.centerAlignContent()
     graphRow.useDefaultPadding()
-    graphRow.size = new Size(135, graphHeight)
+    graphRow.size = new Size(graphWidth, graphHeight)
 
     let incidenceColumnData = []
-    let incidenceColumnBLData = []
-    let incidenceColumnGerData = []
 
     for (i = 0; i < data.areaIncidenceLastWeek.length; i++) {
         incidenceColumnData.push(data.areaIncidenceLastWeek[i])
-        incidenceColumnBLData.push(data.blIncidenceLastWeek[i])
-        incidenceColumnGerData.push(data.gerIncidenceLastWeek[i])
     }
 
-    incidenceColumnData.push(0)
-    incidenceColumnData = incidenceColumnData.concat(incidenceColumnBLData)
-    incidenceColumnData.push(0)
-    incidenceColumnData = incidenceColumnData.concat(incidenceColumnGerData)
-
-    let w = 125
-    let image = columnGraph(incidenceColumnData, w, graphHeight).getImage()
+    let image = columnGraph(incidenceColumnData, graphWidth, graphHeight).getImage()
     let img = graphRow.addImage(image)
     img.resizable = false;
     img.centerAlignImage();
