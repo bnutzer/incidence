@@ -117,7 +117,7 @@ if (args.widgetParameter) {
     const parameters = args.widgetParameter.split(',');
 
     if (parameters.length >= 1) {
-        graphOn = (parameters[0] === 1);
+        graphOn = (parameters[0] == 1);
     }
     if (parameters.length >= 3) {
         fixedCoordinates = parseLocation(args.widgetParameter);
@@ -454,7 +454,7 @@ function getTrendArrow(preValue, currentValue) {
 
 function createUpdatedLabel(label, data) {
     let labelText = data.updated.substr(0, 10);
-    if(showUpdatedTimeIfNotMidnight && data.updated.indexOf('00:00') === -1) {
+    if (showUpdatedTimeIfNotMidnight && data.updated.indexOf('00:00') === -1) {
         labelText += data.updated.substr(11, 6);
     }
     const updateLabel = label.addText(labelText);
