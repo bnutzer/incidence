@@ -133,7 +133,6 @@ let fixedCoordinates = [];
 let individualName = '';
 
 let MEDIUMWIDGET = (config.widgetFamily === 'medium') ? true : false;
-
 /***************************************************************************
  * 
  * Lets's Start ...
@@ -472,7 +471,8 @@ function createIncidenceBlock(stack, data) {
 
 function createIncTrendBlock(stack, data) {
     let length = data.areaIncidenceLastWeek.length;
-    const incidenceTrend = getTrendArrowFactor(parseFloat(data.r_factor_today.toString().replace(',', '.')));
+
+    const incidenceTrend = getTrendArrowFactor(parseFloat(data.r_factor_today).toFixed(3));
     const incidenceLabelTrend = stack.addText('' + incidenceTrend);
     incidenceLabelTrend.font = Font.mediumSystemFont(20);
     incidenceLabelTrend.rightAlignText();
@@ -630,8 +630,8 @@ async function getData(useFixedCoordsIndex = false) {
         let r_today = 0;
         let r_yesterday = 0;
 
-        r_today = formatCases(estimateReproductionFactor(areaIncidenceLastWeek, 1).toFixed(2));
-        r_yesterday = formatCases(estimateReproductionFactor(areaIncidenceLastWeek, 2).toFixed(2));
+        r_today = estimateReproductionFactor(areaIncidenceLastWeek, 1).toFixed(2);
+        r_yesterday = estimateReproductionFactor(areaIncidenceLastWeek, 2).toFixed(2);
 
         data = await new Request(apiUrlCases(GESAMTFAELLE, landkreisApi)).loadJSON();
         const areaCases = getValueFromJson(data);
@@ -760,7 +760,7 @@ function getTrendArrowFactor(rValue) {
 
     if (pct < PCT_TREND_EQUAL && pct > -PCT_TREND_EQUAL) {
         arrow = '→';
-    } else if (pct < PCT_TREND_INCREASE) {
+    } else if (pct < PCT_TREND_INCREASE && pct >= PCT_TREND_EQUAL) {
         arrow = '↗';
     } else if (pct >= PCT_TREND_INCREASE) {
         arrow = '↑';
