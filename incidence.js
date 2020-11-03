@@ -44,6 +44,10 @@ const trendDaysOffset = 1;
 const showIncidenceYesterday = false;
 
 
+
+// show the time additionally to the updated date, if not happened at midnight 
+const showUpdatedTimeIfNotMidnight = true;
+
 /*****************************************************************
  * CONSTANTS
  *****************************************************************/
@@ -449,7 +453,11 @@ function getTrendArrow(preValue, currentValue) {
 }
 
 function createUpdatedLabel(label, data) {
-    const updateLabel = label.addText(`${data.updated.substr(0, 10)} `);
+    let labelText = data.updated.substr(0, 10);
+    if(showUpdatedTimeIfNotMidnight && data.updated.indexOf('00:00') === -1) {
+        labelText += data.updated.substr(11, 6);
+    }
+    const updateLabel = label.addText(labelText);
     updateLabel.font = Font.systemFont(8);
     updateLabel.textColor = Color.gray();
     updateLabel.leftAlignText();
