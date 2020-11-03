@@ -26,10 +26,6 @@ const trendDaysOffset = 1
 // set to false for showing the API-Value of today
 const showIncidenceYesterday = false
 
-
-// show the time additionally to the updated date, if not happened at midnight 
-const showUpdatedTimeIfNotMidnight = true;
-
 /*****************************************************************
  * 
  * END OF CONIFURATION
@@ -455,22 +451,11 @@ function getTrendArrow(preValue, currentValue) {
     return (arrow)
 }
 
-function createUpdatedLabel(label, data) { <<
-    << << < HEAD
-    let labelText = data.updated.substr(0, 10);
-    if (showUpdatedTimeIfNotMidnight && data.updated.indexOf('00:00') === -1) {
-        labelText += data.updated.substr(11, 6);
-    }
-    const updateLabel = label.addText(labelText);
-    updateLabel.font = Font.systemFont(8);
-    updateLabel.textColor = Color.gray();
-    updateLabel.leftAlignText(); ===
-    === =
+function createUpdatedLabel(label, data) {
     const updateLabel = label.addText(`${data.updated.substr(0, 10)} `)
     updateLabel.font = Font.systemFont(8)
     updateLabel.textColor = Color.gray()
-    updateLabel.leftAlignText() >>>
-        >>> > parent of 01 aee98...Optimize / Lint / Format Code
+    updateLabel.leftAlignText()
 }
 
 function createIncidenceLabelBlock(labelBlock, data) {
@@ -622,11 +607,6 @@ function getNewAreaCasesAndTrend(data) {
     return ("+" + formatCases(data.areaNewCases) + getTrendArrow(data.areaCasesWeekBeforeWeek, data.areaCasesLastWeekYesterday))
 }
 
-function getNewBLCasesAndTrend(data) { <<
-    << << < HEAD
-    return ('+' + formatCases(data.blNewCases) + getTrendArrow(data.blCasesWeekBeforeWeek, data.blCasesLastWeekYesterday));
-} ===
-=== =
-return ("+" + formatCases(data.blNewCases) + getTrendArrow(data.blCasesWeekBeforeWeek, data.blCasesLastWeekYesterday))
-} >>>
->>> > parent of 01 aee98...Optimize / Lint / Format Code
+function getNewBLCasesAndTrend(data) {
+    return ("+" + formatCases(data.blNewCases) + getTrendArrow(data.blCasesWeekBeforeWeek, data.blCasesLastWeekYesterday))
+}
