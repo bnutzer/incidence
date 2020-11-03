@@ -103,7 +103,7 @@ const apiRUrl = `https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Pr
 const GET_DAYS = 35; // 5 Wochen
 const WEEK_IN_DAYS = 7;
 const EWZ_GER = 83020000;
-const INCIDENCE_DAYS = 28; // 3 Wochen
+const INCIDENCE_DAYS = 28; // 4 Wochen
 
 const BUNDESLAENDER_SHORT = {
     'Baden-Württemberg': 'BW',
@@ -472,9 +472,7 @@ function createIncidenceBlock(stack, data) {
 
 function createIncTrendBlock(stack, data) {
     let length = data.areaIncidenceLastWeek.length;
-    const incidenceTrend = getTrendArrowFactor(parseFloat(data.r_factor_today).toFixed(3));
-    //const incidenceTrend = getTrendArrowFactor(parseFloat(data.r_factor_today.replace(',', '.')).toFixed(3));
-
+    const incidenceTrend = getTrendArrowFactor(parseFloat(data.r_factor_today.toString().replace(',', '.')));
     const incidenceLabelTrend = stack.addText('' + incidenceTrend);
     incidenceLabelTrend.font = Font.mediumSystemFont(20);
     incidenceLabelTrend.rightAlignText();
